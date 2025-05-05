@@ -139,3 +139,75 @@ export const logout = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+export const onboard = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { fullName, bio, nativeLanguage, learningLanguage, location } =
+      req.body;
+
+    if (!fullName || !bio || !nativeLanguage || !learningLanguage) {
+      return res.status(400).json({
+        message: "All fields are required",
+        missingFields: [
+          !fullName && "fullName",
+          !bio && "bio",
+          !nativeLanguage && "nativeLanguage",
+          !learningLanguage && "learningLanguage",
+          !location && "location",
+        ].filter(Boolean),
+      });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        fullName,
+        bio,
+        nativeLanguage,
+        learningLanguage,
+        location,
+        isOnboarded: true,
+      },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    try {
+      await upsertStreamUser({
+        id: updatedUser._id.toString(),
+        name: updatedUser.fullName,
+        image: updatedUser.avatar || "",
+      });
+    } catch (error) {
+      console.error("Error during Stream user update:", error);
+      return res.status(500).json({
+        message: "Internal server error while updating Stream user",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "User onboarded successfully",
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.error("Error during onboarding:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const authenticatedUser = async (req, res) => {
+  try {
+    return res.status(200).json({
+      success: true,
+      message: "Authenticated user",
+    });
+  } catch (error) {
+    console.error("Error during authenticatedUser:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
